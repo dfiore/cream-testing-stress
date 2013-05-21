@@ -1,4 +1,4 @@
-#!/usr/bin/python2.6
+#!/usr/bin/env python
 
 # Copyright 2012 Dimosthenes Fioretos dfiore -at- noc -dot- uoa -dot- gr
 #
