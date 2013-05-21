@@ -680,6 +680,102 @@ def f(wl,delay,savestats,q):
         if fp:
                 fp.close()
 ###############################################################################################################
+def usage():
+    print "USAGE"
+    print "\n To execute the program, run:\n\t\t" + sys.argv[0] + ' path/to/config/file.ini'
+    print "\n To get help, run:\n\t\t" + sys.argv[0] + ' --help'
+###############################################################################################################
+def help():
+    print "This is a script which automatically monitors ssh enabled hosts and provides plots and statistics"+\
+          " as a result. For this process it uses the following programs, which must be available on the monitored"+\
+          " host:"
+    print "vmstat: for memory statistics"
+    print "iostat: for io statistics"
+    print "sar:    for network statistics"
+    print "qstat:  for torque queue statistics"
+    print "ps:     for process statistics (cpu, memory)"
+    print "Please note that there must be automatic passwordless key authentication set up between the monitoring"+\
+          " and the monitored host, prior to the start of the monitoring operation."
+    print
+    print "The script takes as an argument the path to a python configuration file, which describes which hosts should "+\
+          " be monitored and how."
+    print "This config file is based on the Python's ConfigParser module. You can find documentation on said "+\
+          "module here: http://docs.python.org/2/library/configparser.html"
+    print "The format of the file is as follows:"
+    print "\t[main]"
+    print "\tdelay="
+    print "\tsavestats="
+    print
+    print "\t[hosts]"
+    print "\tkeys=host1,host2,..."
+    print
+    print "\t[host1]"
+    print "\thost="
+    print "\tuser="
+    print "\tport="
+    print "\tprogs="
+    print "\tprocs"
+    print
+    print "\t[host2]"
+    print "\t..."
+    print "\t..."
+    print
+    print "Variable description:"
+    print "\tdelay\n\t\tThe delay between monitor operations (argument for iostat, vmstat, sar etc)"
+    print "\t\tValue: integer in the range 1-30"
+    print "\t\tDefault: 5"
+    print "\tsavestats\n\t\tIf set, the statistics will be saved in a file in a -parse- friendly format."
+    print "\t\tValue: True or False"
+    print "\t\tDefault: False"
+    print "\tkeys\n\t\tThe (arbitrary) names of the following sections describing hosts to be monitored."
+    print "\t\tValue: comma separated string"
+    print "\t\tDefault: n/a"
+    print "\thost\n\t\tThe host name of the host being monitored."
+    print "\t\tValue: any valid hostname"
+    print "\t\tDefault: n/a"
+    print "\tuser\n\t\tThe user to utilize for monitoring. He must have ssh access to the monitored host and be able "+\
+          "to execute the monitoring programs (see bellow)."
+    print "\t\tValue: any valid user name."
+    print "\t\tDefault: n/a"
+    print "\tport\n\t\tthe ssh port for the specified host."
+    print "\t\tValue: integer in the range 1-65535"
+    print "\t\tDefault: 22"
+    print "\tprogs\n\t\tWhich monitoring programs to run on the specified host."
+    print "\t\tValue: comma separated list including any of the following: vmstat, iostat, sar, qstat"
+    print "\t\tDefault: n/a"
+    print "\tprocs\n\t\tprocesses to monitor on the specified host"
+    print "\t\tValue: comma separated list of process names running on the specified host. Non existing processes are ignored."
+    print "\t\tDefault: n/a"
+    print
+    print "Example configuration file:"
+    print "\t[main]"
+    print "\tdelay=3"
+    print "\tsavestats=True"
+    print
+    print "\t[hosts]"
+    print "\tkeys=cream,torque,mysql"
+    print
+    print "\t[cream]"
+    print "\thost=cream.mydomain.org"
+    print "\tuser=root"
+    print "\tport=22"
+    print "\tprogs=vmstat,iostat,sar"
+    print "\tprocs=java,BUpdaterPBS,BNotifier"
+    print
+    print "\t[mysql]"
+    print "\thost=db.mydomain.org"
+    print "\tuser=root"
+    print "\tport=22"
+    print "\tprogs=vmstat,iostat,sar"
+    print "\tprocs=mysql"
+    print
+    print "\t[torque]"
+    print "\thost=lrms.mydomain.org"
+    print "\tuser=root"
+    print "\tport=22"
+    print "\tprogs=vmstat,iostat,sar,qstat"
+    print "\tprocs=pbs_server,maui,munged"
+###############################################################################################################
 ###############################################################################################################
 ###############################################################################################################
 ###############################################################################################################
@@ -691,6 +787,13 @@ if __name__ == '__main__':
         '''
                 the main function
         '''
+
+        if len(sys.argv) != 2:
+            usage()
+            sys.exit(1)
+        elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
+            help()
+            sys.exit(0)
 
         args = parse_arguments()
         numProcs = len(args.watchlist)
