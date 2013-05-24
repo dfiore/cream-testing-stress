@@ -156,8 +156,7 @@ def execute_noninteractive_ssh_com(command,host,user,port=22,background=False):
                 child.sendeof()
                 index = child.expect([expect_key, expect_pass, expect_eof, expect_auth])
                 if index == ipasswd:
-                        raise _error('Pexpect couldn\'t find a proper or right match for "' + ssh_com + '" in "' + \
-                                      expect_key + '" "' + expect_pass + '" "EOF"')
+                        raise _error('Password authentication is NOT supported.')
                 elif index == iauth:
                         #print 'Authenticating and executing...'
                         index = child.expect([expect_key, expect_pass, expect_eof, expect_auth])
@@ -174,8 +173,7 @@ def execute_noninteractive_ssh_com(command,host,user,port=22,background=False):
                         raise _error('Pexpect couldn\'t find a proper or right match for "' + ssh_com + '" in "' + \
                                       expect_key + '" "' + expect_pass + '" "EOF"')
         elif index == ipasswd:
-                raise _error('Pexpect couldn\'t find a proper or right match for "' + ssh_com + '" in "' + \
-                              expect_key + '" "' + expect_pass + '" "EOF"')
+                raise _error('Password authentication is NOT supported.')
                 #print "Sending password..."
                 #child.sendline(password)
         elif index == iauth:
