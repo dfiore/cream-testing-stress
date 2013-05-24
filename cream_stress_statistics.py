@@ -93,7 +93,7 @@ def create_script(iostat, vmstat, sar, qstat, ps, delay, output_dir):
                         'iostat -k -d '+str(delay)+'  > iostat.dat &\n'
         if vmstat == 'True':
                 cnts =  cnts +\
-                        'vmstat -w -n '+str(delay)+'  > vmstat.dat &\n'
+                        'vmstat -n '+str(delay)+'  > vmstat.dat &\n'
         if sar == 'True':
                 cnts =  cnts +\
                         'sar -n DEV '+str(delay)+'  > sar.dat &\n'
