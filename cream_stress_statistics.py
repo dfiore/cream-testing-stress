@@ -528,7 +528,7 @@ def f(wl,delay,savestats,q):
         script_name = script_fpath.split('/')[-1]
 
         # Copy and execute the monitoring script
-        scp_com = 'scp ' + script_fpath + ' ' + wl['user'] + '@' + wl['host'] + ':.'
+        scp_com = 'scp -P ' + str(wl['port']) + ' ' + script_fpath + ' ' + wl['user'] + '@' + wl['host'] + ':.'
         pexpect.run (scp_com)                                                                   #copy over the monitor script
         _enisc('chmod +x ' + script_name, wl['host'], wl['user'], wl['port'])                   #make script executable
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) #leave it to the kernel to reap my dead children (non-posix, not portable!)
