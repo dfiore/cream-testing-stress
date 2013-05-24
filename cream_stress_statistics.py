@@ -496,6 +496,10 @@ def f(wl,delay,savestats,q):
                 fp=None
 
         # Check if the needed executables exist
+        s=check_com_existence(wl['host'],wl['user'],wl['port'],'which scp')
+        if ':0:' not in s:
+                raise _error("Scp command not found on host:" + wl['host'] + ". Aborting!")
+
         if 'iostat' in wl['progs']:
                 s=check_com_existence(wl['host'],wl['user'],wl['port'],'iostat')
                 if ':0:' not in s:
@@ -527,9 +531,16 @@ def f(wl,delay,savestats,q):
                                      output_dir='/tmp')
         script_name = script_fpath.split('/')[-1]
 
-        # Copy and execute the monitoring script
+        # Copy the monitoring script (executed in bash -c, cause pexpec.run() passes
+        # everything as a literal argument, thus the error-checking echo couldn't execute.
         scp_com = 'scp -P ' + str(wl['port']) + ' ' + script_fpath + ' ' + wl['user'] + '@' + wl['host'] + ':.'
-        pexpect.run (scp_com)                                                                   #copy over the monitor script
+        scp_com += ' ; echo ":$?:"'
+        retVal=pexpect.run ('bash -c "' +scp_com+'"')
+        if ':0:' not in retVal:
+                raise _error("Scp command:\n" + scp_com + "\nhas failed."+\
+                             "Command reported:" + retVal + "Aborting!")
+
+        # Execute the copied script
         _enisc('chmod +x ' + script_name, wl['host'], wl['user'], wl['port'])                   #make script executable
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) #leave it to the kernel to reap my dead children (non-posix, not portable!)
         com = 'ssh -p ' + str(wl['port']) + ' ' + wl['user'] + '@' + wl['host'] +\
