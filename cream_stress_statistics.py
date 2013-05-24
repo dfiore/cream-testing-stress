@@ -88,15 +88,13 @@ def create_script(iostat, vmstat, sar, qstat, ps, delay, output_dir):
                 '\t#exit 0\n'+\
                 '#}\n\n'+\
                 '\n#trap at_exit SIGINT\n\n'
-        if iostat == 'True':
-                cnts =  cnts +\
-                        'iostat -k -d '+str(delay)+'  > iostat.dat &\n'
-        if vmstat == 'True':
-                cnts =  cnts +\
-                        'vmstat -n '+str(delay)+'  > vmstat.dat &\n'
-        if sar == 'True':
-                cnts =  cnts +\
-                        'sar -n DEV '+str(delay)+'  > sar.dat &\n'
+
+        if iostat == 'True' or iostat == True:
+                cnts =  cnts + 'iostat -k -d '+str(delay)+'  > iostat.dat &\n'
+        if vmstat == 'True' or vmstat == True:
+                cnts =  cnts + 'vmstat -n '+str(delay)+'  > vmstat.dat &\n'
+        if sar == 'True' or sar == True:
+                cnts =  cnts + 'sar -n DEV '+str(delay)+'  > sar.dat &\n'
 
         #if len(ps) > 0 or qstat == 'True':
         if ps != False or qstat == 'True':
@@ -224,7 +222,7 @@ def _senc(com,wait=False):
         # wrapper
         return sub_execute_noninteractive_com(com,wait)
 ###############################################################################################################
-def ps_graph(l,delay,host,fp):
+def ps_graph(l,delay,host,fp,output_dir):
         '''
                 l is a list with the monitored proc's name @ its 1st line and then a duet of numbers (cpu,size)
                 @ each line after that, one each delay seconds.
@@ -260,10 +258,10 @@ def ps_graph(l,delay,host,fp):
 
 
                 # plot it
-                do_plot1(timeList,cpu,'Time(secs)','CPU',host+'_'+name)
-                do_plot1(timeList,sizeKB,'Time(secs)','Mem.Size(KB)',host+'_'+name) #convert bytes to KB for mem.size
+                do_plot1(timeList,cpu,'Time(secs)','CPU',output_dir+'/'+host+'_'+name)
+                do_plot1(timeList,sizeKB,'Time(secs)','Mem.Size(KB)',output_dir+'/'+host+'_'+name) #convert bytes to KB for mem.size
 ###############################################################################################################
-def sar_graph(s,delay,host,fp):
+def sar_graph(s,delay,host,fp,output_dir):
         '''
                 s is a string with the monitored host's sar -n DEV output
                 fp is either a file object (opened) or None
@@ -308,9 +306,10 @@ def sar_graph(s,delay,host,fp):
                         fp.write('##:'+host+':'+name+':recieve'+'\n')
                         fp.write(repr(zip(timeList,tx))+'\n')
 
-                do_plot2(timeList,rx,'Time(secs)','Receive(KBps)',timeList,tx,"Time(secs)","Transmit(KBps)",host+'_'+name)
+                do_plot2(timeList,rx,'Time(secs)','Receive(KBps)',timeList,tx,"Time(secs)",
+                         "Transmit(KBps)",output_dir+'/'+host+'_'+name)
 ###############################################################################################################
-def vmstat_graph(s,delay,host,fp):
+def vmstat_graph(s,delay,host,fp,output_dir):
         '''
                 s is a string with the monitored host's vmstat output
                 fp is either a file object (opened) or None
@@ -346,14 +345,18 @@ def vmstat_graph(s,delay,host,fp):
                 fp.write('##:'+host+':cpu_idle'+'\n')    ; fp.write(repr(zip(timeList,cpu_idle))+'\n')
                 fp.write('##:'+host+':cpu_iowait'+'\n')  ; fp.write(repr(zip(timeList,cpu_iowait))+'\n')
 
-        do_plot2(timeList,procs_ready,'Time(secs)','Ready Procs',timeList,procs_sleep,'Time(secs)','Sleeping Procs',host+'_processes')
+        do_plot2(timeList,procs_ready,'Time(secs)','Ready Procs',timeList,procs_sleep,'Time(secs)',
+                 'Sleeping Procs',output_dir+'/'+host+'_processes')
         do_plot4(timeList,mem_swap,'Time(secs)','Swap',timeList,mem_free,'Time(secs)','Free',
-                 timeList,mem_buff,'Time(secs)','Buffers',timeList,mem_cache,'Time(secs)','Cache',host+'_mem_stats')
-        do_plot2(timeList,sys_ips,'Time(secs)','Interrupts',timeList,sys_csps,'Time(secs)','Context_Switches (both per second)',host+'_system_stats')
+                 timeList,mem_buff,'Time(secs)','Buffers',timeList,mem_cache,'Time(secs)','Cache',
+                  output_dir+'/'+host+'_mem_stats')
+        do_plot2(timeList,sys_ips,'Time(secs)','Interrupts',timeList,sys_csps,'Time(secs)',
+                 'Context_Switches (both per second)',output_dir+'/'+host+'_system_stats')
         do_plot4(timeList,cpu_user,'Time(secs)','User',timeList,cpu_sys,'Time(secs)','System',
-                 timeList,cpu_idle,'Time(secs)','Idle',timeList,cpu_iowait,'Time(secs)','IO_Wait',host+'_cpu_stats')        
+                 timeList,cpu_idle,'Time(secs)','Idle',timeList,cpu_iowait,'Time(secs)','IO_Wait',
+                 output_dir+'/'+host+'_cpu_stats')        
 ###############################################################################################################
-def iostat_graph(s,delay,host,fp):
+def iostat_graph(s,delay,host,fp,output_dir):
         '''
                 s is a string with the monitored host's vmstat output
                 fp is either a file object (opened) or None
@@ -394,9 +397,10 @@ def iostat_graph(s,delay,host,fp):
                         fp.write('##:'+host+':'+name+':writeKB'+'\n')
                         fp.write(repr(zip(timeList,writeKB))+'\n')
 
-                do_plot2(timeList,readKB,'Time(secs)','Read(KB)',timeList,writeKB,"Time(secs)","Write(KB)",host+'_'+name)
+                do_plot2(timeList,readKB,'Time(secs)','Read(KB)',timeList,writeKB,"Time(secs)",
+                         "Write(KB)",output_dir+'/'+host+'_'+name)
 ###############################################################################################################
-def qstat_graph(s,delay,host,fp):
+def qstat_graph(s,delay,host,fp,output_dir):
         '''
                 s contains one number in each line, representing the sum of the queued jobs in torque
                 fp is either a file object (opened) or None
@@ -411,7 +415,7 @@ def qstat_graph(s,delay,host,fp):
                 fp.write('##:'+host+':qstat'+'\n')
                 fp.write(repr(zip(timeList,l))+'\n')
 
-        do_plot1(timeList,l,'Time(secs)','Queued_Jobs',host+'_qstat')
+        do_plot1(timeList,l,'Time(secs)','Queued_Jobs',output_dir+'/'+host+'_qstat')
 ###############################################################################################################
 def do_plot1(xList, yList, xLabel, yLabel, name):
         '''
@@ -475,7 +479,7 @@ def check_com_existence(host,user,port,command):
 
         return _enisc(command + ' ; echo ":$?:"',host,user,port)
 ###############################################################################################################
-def f(wl,delay,savestats,q):
+def f(wl,delay,savestats,q,output_dir):
         '''
                 Run monitor script on the given host, gather the produced data, plot them and erase leftover files.
                 Also, optionally, save the ploted data in parse-friendly format.
@@ -573,15 +577,15 @@ def f(wl,delay,savestats,q):
 
         # Plot graphs
         if 'iostat' in wl['progs']:
-                iostat_graph(iostat_contents,int(delay),wl['host'],fp)
+                iostat_graph(iostat_contents,int(delay),wl['host'],fp,output_dir)
         if 'vmstat' in wl['progs']:
-                vmstat_graph(vmstat_contents,int(delay),wl['host'],fp)
+                vmstat_graph(vmstat_contents,int(delay),wl['host'],fp,output_dir)
         if 'sar' in wl['progs']:
-                sar_graph(sar_contents,int(delay),wl['host'],fp)
+                sar_graph(sar_contents,int(delay),wl['host'],fp,output_dir)
         if 'qstat' in wl['progs']:
-                qstat_graph(qstat_contents,int(delay),wl['host'],fp)
+                qstat_graph(qstat_contents,int(delay),wl['host'],fp,output_dir)
         if len(wl['procs'].split(',')) > 0:
-                ps_graph(ps_contents,int(delay),wl['host'],fp)
+                ps_graph(ps_contents,int(delay),wl['host'],fp,output_dir)
 
         # Close statistics file, if needed
         if fp:
@@ -632,6 +636,8 @@ def help():
     print "\t\tValue: integer in the range 1-30"
     print "\tsavestats\n\t\tIf set, the statistics will be saved in a file in a -parse- friendly format."
     print "\t\tValue: True or False"
+    print "\toutput_dir\n\t\tThe directory in which to put produced graphs."
+    print "\t\tValue: any valid path, defaults to the current working directory."
     print "\tkeys\n\t\tThe (arbitrary) names of the following sections describing hosts to be monitored."
     print "\t\tValue: comma separated string"
     print "\thost\n\t\tThe host name of the host being monitored."
@@ -698,7 +704,7 @@ def parse_arguments(cfg_file):
 
         args = {}
 
-        cfg = ConfigParser.SafeConfigParser()
+        cfg = ConfigParser.SafeConfigParser({'output_dir':'./'})
         cfg.read(cfg_file)
 
         args['delay']=cfg.getint('main','delay')
@@ -708,6 +714,12 @@ def parse_arguments(cfg_file):
         args['savestats']=cfg.getboolean('main','savestats')
         if args['savestats'] != True and args['savestats'] != False:
             raise _error('Argument savestats should be True or False, is:' + str(args['savestats']))
+
+        args['output_dir']=cfg.get('main','output_dir')
+        if len(args['output_dir'].strip()) == 0:
+            args['output_dir']="./"
+        if not os.path.isdir(args['output_dir']):
+            args['output_dir']="./"
 
         args['hosts']=cfg.get('hosts','keys')
         if len(args['hosts'].strip()) == 0:
@@ -764,7 +776,7 @@ if __name__ == '__main__':
         procs = []
         #for num in range(numProcs):
         for host in [x.strip() for x in args['hosts'].split(',')]:      # the monitoring procs, one for each host
-                p=Process(target=f, args=(args[host],args['delay'],args['savestats'],q))
+                p=Process(target=f, args=(args[host],args['delay'],args['savestats'],q,args['output_dir']))
                 procs.append(p)
                 p.start()
 
