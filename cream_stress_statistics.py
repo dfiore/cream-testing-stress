@@ -262,52 +262,51 @@ def ps_graph(l,delay,host,fp,output_dir):
                 do_plot1(timeList,sizeKB,'Time(secs)','Mem.Size(KB)',output_dir+'/'+host+'_'+name) #convert bytes to KB for mem.size
 ###############################################################################################################
 def sar_graph(s,delay,host,fp,output_dir):
-        '''
-                s is a string with the monitored host's sar -n DEV output
-                fp is either a file object (opened) or None
-                rest vars are self-explanatory
-        '''
+    '''
+            s is a string with the monitored host's sar -n DEV output
+            fp is either a file object (opened) or None
+            rest vars are self-explanatory
+    '''
 
-        l = filter(None,re.sub(r'[ \t\r\f\v]+',' ',s).split('\n'))      # sar's contents, with single spaces, split at newlines
-        l[:] = [i for i in l if len(i) > 2 ]                              # remove single \n items (in place)
+    l = filter(None,re.sub(r'[ \t\r\f\v]+',' ',s).split('\n'))      # sar's contents, with single spaces, split at newlines
+    l[:] = [i for i in l if len(i) > 2 ]                              # remove single \n items (in place)
 
-        ifaceLines = [i for i, x in enumerate(l) if "IFACE" in x]
-        diffs = [j-i for i,j in zip(ifaceLines[:-1],ifaceLines[1:])]
-        if len(set(diffs)) != 1:
-                print "Error while parsing sar output. Wrong diffs found. Will not plot graphs."
-                return
-        ifaceNum = diffs[0]-1
+    ifaceLines = [i for i, x in enumerate(l) if "IFACE" in x]     #line no. of line containing "IFACE"
+    diffs = [j-i for i,j in zip(ifaceLines[:-1],ifaceLines[1:])]  #all the difference between those lines
+                                                                  #(must always be the same for output to be sane)
+    if len(set(diffs)) != 1:
+            print "Error while parsing sar output. Wrong diffs found. Will not plot graphs."
+            return
+    ifaceNum = diffs[0]-1                                           #number of interfaces present
 
-        ifaceNames = []
-        for i in l[ifaceLines[0]+1:ifaceLines[1]]: #not ifaceLines[1]-1, due to 0-based indexing ;-)
-                ifaceNames.append(i.split(' ')[2])
+    ifaceNames = []
+    for i in l[ifaceLines[0]+1:ifaceLines[1]]: #not ifaceLines[1]-1, due to 0-based indexing ;-)
+            ifaceNames.append(i.split(' ')[2])
 
+    samples=0
+    for i in l:
+            if "IFACE" in i:
+                    samples += 1
+    timeList = [ (x*y) for x in range(1,samples+1) for y in [int(delay)]]
 
-        samples=0
-        for i in l:
-                if "IFACE" in i:
-                        samples += 1
-        timeList = [ (x*y) for x in range(1,samples+1) for y in [int(delay)]]
+    for name in ifaceNames:
+        rx = []
+        tx = []
 
-        for name in ifaceNames:
-                rx = []
-                tx = []
+        for line in l[1:]: #the first line contains irrelevant data that can confuse parsing
+            if name in line:
+                tmp = line.split(' ')
+                rx.append(tmp[5])
+                tx.append(tmp[6])
 
-                for line in l:
-                        if name in line:
-                                tmp = line.split(' ')
-                                rx.append(tmp[5])
-                                tx.append(tmp[6])
+        if fp:
+            fp.write('##:'+host+':'+name+':transmit'+'\n')
+            fp.write(repr(zip(timeList,rx))+'\n')
+            fp.write('##:'+host+':'+name+':recieve'+'\n')
+            fp.write(repr(zip(timeList,tx))+'\n')
 
-
-                if fp:
-                        fp.write('##:'+host+':'+name+':transmit'+'\n')
-                        fp.write(repr(zip(timeList,rx))+'\n')
-                        fp.write('##:'+host+':'+name+':recieve'+'\n')
-                        fp.write(repr(zip(timeList,tx))+'\n')
-
-                do_plot2(timeList,rx,'Time(secs)','Receive(KBps)',timeList,tx,"Time(secs)",
-                         "Transmit(KBps)",output_dir+'/'+host+'_'+name)
+        do_plot2(timeList,rx,'Time(secs)','Receive(KBps)',timeList,tx,"Time(secs)",
+                 "Transmit(KBps)",output_dir+'/'+host+'_'+name)
 ###############################################################################################################
 def vmstat_graph(s,delay,host,fp,output_dir):
         '''
@@ -551,7 +550,7 @@ def f(wl,delay,savestats,q,output_dir):
               ' "echo \"authenticated:\" ; ./' + script_name + '" &'
         _senc(com)                                                                              #run it in the background
 
-        arr = q.remove()        #wait to receive "signal" to stop monitoring (queues contents are irrelevant)
+        arr = q.remove()        #wait to receive "signal" to stop monitoring (queue's contents are irrelevant)
 
         signal.signal(signal.SIGCHLD, signal.SIG_DFL) # reset signal handler to default
 
