@@ -32,7 +32,7 @@
 
 from multiprocessing import Process, Lock, Queue, queues
 import multiprocessing
-import pexpect, re, sys, time, subprocess , shlex, os, signal, math, datetime, ConfigParser
+import pexpect, re, sys, time, subprocess , shlex, os, signal, math, datetime, ConfigParser, itertools, math
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -94,7 +94,9 @@ def create_script(iostat, vmstat, sar, qstat, ps, delay, output_dir):
         if vmstat == 'True' or vmstat == True:
                 cnts =  cnts + 'vmstat -n '+str(delay)+'  > vmstat.dat &\n'
         if sar == 'True' or sar == True:
-                cnts =  cnts + 'sar -n DEV '+str(delay)+'  > sar.dat &\n'
+                #LC_TIME to show timestamps in 24 hour format
+                #(will not output PM/AM, good for parsing both RHEL and DEBIAN hosts)
+                cnts =  cnts + 'LC_TIME=POSIX sar -n DEV '+str(delay)+'  > sar.dat &\n'
 
         #if len(ps) > 0 or qstat == 'True':
         if ps != False or qstat == 'True':
@@ -105,6 +107,7 @@ def create_script(iostat, vmstat, sar, qstat, ps, delay, output_dir):
                         for proc in ps.split(','):
                                 cnts =  cnts +\
                                         '\tps -C '+proc+' --no-headers -o %cpu,size >> '+proc+'.dat\n'
+                                cnts = cnts + 'echo "---+++---" >> '+proc+'.dat\n'
                 if qstat == 'True':
                         cnts = cnts +\
                                 '\tqstat | wc -l >> qstat.dat\n'
@@ -231,10 +234,8 @@ def ps_graph(l,delay,host,fp,output_dir):
 
         samples=0
         for i in l[0].split('\n'):
-                tmp1=re.sub(r'\s', '', i)       # replase (actually erase) whitespaces...
-                tmp2=re.sub(r'\.', '', tmp1)    # ...and dots (used in real number's representation)
-                if tmp2.isdigit():
-                        samples += 1
+            if '---+++---' in i:
+                samples += 1
 
         timeList = [ (x*y) for x in range(1,samples+1) for y in [int(delay)]]
 
@@ -244,9 +245,13 @@ def ps_graph(l,delay,host,fp,output_dir):
                 tmp1 = re.sub(r'\s', ' ', proc.split(':')[2])     # erase whitespace characters
                 tmp2 = tmp1.split(' ')                            # split items
                 vals = filter(None,tmp2)                          # remove empty items
+                aek  = [ list(x[1]) for x in itertools.groupby(vals, lambda x:x=='---+++---') if not x[0] ]
 
-                cpu  = vals[0::2]                                 # take every 2nd item, starting at 1st item (note: 0-based indexing)
-                size = vals[1::2]                                 # take every 2nd item, starting at 2nd item (note: 0-based indexing)
+                cpu = []
+                size = []
+                for item in aek:
+                    cpu.append(math.fsum([float(x) for x in item[0::2]]))
+                    size.append(math.fsum([float(x) for x in item[1::2]]))
 
                 sizeKB = [round(float(x)/1024.0,2) for x in size] # memory size in KB rounded to 2 decimal points for better visualization
 
@@ -256,6 +261,14 @@ def ps_graph(l,delay,host,fp,output_dir):
                         fp.write('##:'+host+':'+name+':size'+'\n')
                         fp.write(repr(zip(timeList,sizeKB))+'\n')
 
+                if len(cpu) == 0: #ignore processes which aren't actually running, even if requested
+                    continue
+
+                #trim list to the least size
+                least_len = min(len(cpu),len(size),len(timeList))
+                cpu = cpu[:least_len]
+                size = size[:least_len]
+                timeList = timeList[:least_len]
 
                 # plot it
                 do_plot1(timeList,cpu,'Time(secs)','CPU',output_dir+'/'+host+'_'+name)
@@ -280,8 +293,11 @@ def sar_graph(s,delay,host,fp,output_dir):
     ifaceNum = diffs[0]-1                                           #number of interfaces present
 
     ifaceNames = []
-    for i in l[ifaceLines[0]+1:ifaceLines[1]]: #not ifaceLines[1]-1, due to 0-based indexing ;-)
-            ifaceNames.append(i.split(' ')[2])
+    for line in l[2:]: #first line is irrelevant, second is header
+        if 'IFACE' in line:
+            break
+        else:
+            ifaceNames.append(line.split(' ')[1])
 
     samples=0
     for i in l:
@@ -293,11 +309,13 @@ def sar_graph(s,delay,host,fp,output_dir):
         rx = []
         tx = []
 
+        counter=0
         for line in l[1:]: #the first line contains irrelevant data that can confuse parsing
             if name in line:
+                counter+=1
                 tmp = line.split(' ')
-                rx.append(tmp[5])
-                tx.append(tmp[6])
+                rx.append(float(tmp[5]))
+                tx.append(float(tmp[6]))
 
         if fp:
             fp.write('##:'+host+':'+name+':transmit'+'\n')
@@ -500,6 +518,9 @@ def f(wl,delay,savestats,q,output_dir):
 
         # Check if the needed executables exist
         s=check_com_existence(wl['host'],wl['user'],wl['port'],'which scp')
+        if ':0:' not in s:
+                raise _error("Scp command not found on host:" + wl['host'] + ". Aborting!")
+        s=check_com_existence(wl['host'],wl['user'],wl['port'],'which killall')
         if ':0:' not in s:
                 raise _error("Scp command not found on host:" + wl['host'] + ". Aborting!")
 
